@@ -1,6 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 import { Button } from './components/ui/button';
+import { Popover, PopoverTrigger, PopoverContent } from './components/ui/popover';
+import { AuthModal } from './components/AuthModal';
+import { Leaderboard } from './components/Leaderboard';
+import { useAuth } from './context/AuthContext';
 import closedChest from './assets/treasure_closed.png';
 import treasureChest from './assets/treasure_opened.png';
 import skeletonChest from './assets/treasure_opened_skeleton.png';
@@ -15,9 +19,21 @@ interface Box {
 }
 
 export default function App() {
+  const { status, profile, playAsGuest, signOut, updateHighScore } = useAuth();
   const [boxes, setBoxes] = useState<Box[]>([]);
   const [score, setScore] = useState(0);
   const [gameEnded, setGameEnded] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [leaderboardRefreshKey, setLeaderboardRefreshKey] = useState(0);
+
+  useEffect(() => {
+    if (status === 'signed-out') setAuthModalOpen(true);
+  }, [status]);
+
+  useEffect(() => {
+    if (!gameEnded) return;
+    updateHighScore(score).then(() => setLeaderboardRefreshKey(key => key + 1));
+  }, [gameEnded]);
 
   const initializeGame = () => {
     // Randomly assign treasure to one box
@@ -37,6 +53,17 @@ export default function App() {
   useEffect(() => {
     initializeGame();
   }, []);
+
+  // Reset the game whenever the player logs in or logs out (but not on the initial load)
+  const hasSeenFirstStatus = useRef(false);
+  useEffect(() => {
+    if (status === 'loading') return;
+    if (!hasSeenFirstStatus.current) {
+      hasSeenFirstStatus.current = true;
+      return;
+    }
+    initializeGame();
+  }, [status]);
 
   const openBox = (boxId: number) => {
     if (gameEnded) return;
@@ -68,7 +95,41 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-amber-50 to-amber-100 flex flex-col items-center justify-center p-8">
+    <div className="relative min-h-screen bg-gradient-to-b from-amber-50 to-amber-100 flex flex-col items-center justify-center p-8">
+      <AuthModal
+        open={authModalOpen}
+        onOpenChange={setAuthModalOpen}
+        onGuest={() => {
+          playAsGuest();
+          setAuthModalOpen(false);
+        }}
+      />
+
+      {status !== 'loading' && (
+        <div className="absolute top-4 right-4 flex items-center gap-3 text-sm text-amber-800">
+          {status === 'authenticated' ? (
+            <>
+              <span>Welcome, {profile?.username}</span>
+              <span>Personal Best: ${profile?.high_score ?? 0}</span>
+              <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white" onClick={signOut}>
+                Log Out
+              </Button>
+            </>
+          ) : (
+            <>
+              <span>Playing as Guest</span>
+              <Button
+                size="sm"
+                className="bg-amber-600 hover:bg-amber-700 text-white"
+                onClick={() => setAuthModalOpen(true)}
+              >
+                Log In
+              </Button>
+            </>
+          )}
+        </div>
+      )}
+
       <div className="text-center mb-8">
         <h1 className="text-4xl mb-4 text-amber-900">🏴‍☠️ Treasure Hunt Game 🏴‍☠️</h1>
         <p className="text-amber-800 mb-4">
@@ -79,13 +140,27 @@ export default function App() {
         </p>
       </div>
 
-      <div className="mb-8">
-        <div className="text-2xl text-center p-4 bg-amber-200/80 backdrop-blur-sm rounded-lg shadow-lg border-2 border-amber-400">
+      <div className="mb-8 flex items-center justify-center gap-3">
+        <div className="text-lg text-center p-2 bg-amber-200/80 backdrop-blur-sm rounded-lg shadow-lg border-2 border-amber-400">
           <span className="text-amber-900">Current Score: </span>
           <span className={`${score >= 0 ? 'text-green-600' : 'text-red-600'}`}>
             ${score}
           </span>
         </div>
+
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              className="h-auto p-2 text-lg rounded-lg border-2 border-transparent bg-amber-600 hover:bg-amber-700 text-white"
+              aria-label="View leaderboard"
+            >
+              Leaderboard
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="border-transparent bg-transparent p-0 shadow-none">
+            <Leaderboard refreshKey={leaderboardRefreshKey} />
+          </PopoverContent>
+        </Popover>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
