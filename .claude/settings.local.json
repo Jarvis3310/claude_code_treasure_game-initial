@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -la \"C:/Users/user/.claude/projects/\" 2>/dev/null | head -30; echo \"---\"; ls -la \"C:/Users/user/.claude/\" 2>/dev/null | head -30)",
+      "Read(//c/Users/user/.claude/projects/**)",
+      "Read(//c/Users/user/.claude/**)",
+      "Bash(echo \"exit:$?\")"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\user\\.claude"
+    ]
+  }
+}
