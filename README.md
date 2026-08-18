@@ -75,5 +75,5 @@ revert back to previous git commit
 
 ### custom command - Github Page deployment
 - create folder: .claude/commands
-- create file: deploy_github_page.md 
+- create file: deploy_github_pages.md 
 - after creation, re-open a new claude code session

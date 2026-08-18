@@ -22,7 +22,23 @@ VITE_SUPABASE_URL=
 VITE_SUPABASE_ANON_KEY=
 ```
 
-缺少這兩個環境變數時，[src/lib/supabase.ts](src/lib/supabase.ts) 會在啟動時直接丟出錯誤。Supabase 專案需要的 `profiles` 資料表 schema、RLS policy、自動建立 profile 的 trigger，並未包含在程式碼中，需手動在 Supabase SQL Editor 執行一次（schema 見對話紀錄或自行依 `AuthContext.tsx`／`Leaderboard.tsx` 的查詢欄位還原）。
+缺少這兩個環境變數時，[src/lib/supabase.ts](src/lib/supabase.ts) 會在啟動時直接丟出錯誤。Supabase 專案需要的 `profiles` 資料表 schema、RLS policy、自動建立 profile 的 trigger，並未包含在程式碼中，schema 定義見 [specs/auth-leaderboard.md](specs/auth-leaderboard.md)，需手動在 Supabase SQL Editor 執行一次。
+
+### 部署（Vercel）
+
+[vercel.json](vercel.json) 已指定 `buildCommand: npm run build`、`outputDirectory: build`，與 `package.json`／`vite.config.ts` 的設定一致。部署請使用 `/deploy_vercel`（[.claude/commands/deploy_vercel.md](.claude/commands/deploy_vercel.md) 定義的自訂 slash command），它會依序檢查 Vercel 登入狀態、確認 production 環境已設定 Supabase 環境變數，再執行 `npx vercel --prod`。同上述本機開發需求，Vercel 專案本身也必須在 production 環境設定 `VITE_SUPABASE_URL`／`VITE_SUPABASE_ANON_KEY`，否則建置出的網站會在啟動時丟出相同錯誤。
+
+### 部署（GitHub Pages）
+
+部署請使用 `/deploy_github_pages`（[.claude/commands/deploy_github_pages.md](.claude/commands/deploy_github_pages.md) 定義的自訂 slash command），它會依序檢查 GitHub CLI 登入狀態、repo 是否存在與可見度（GitHub Pages 免費個人方案只支援 public repo）、`vite.config.ts` 的 `base` 設定，再用 `gh-pages` 套件（`devDependencies`）把 `npm run build` 的產物推送到 `gh-pages` 分支。
+
+[vite.config.ts](vite.config.ts) 的 `base: './'` 是專門為了這個部署方式而加的：GitHub Pages 的專案頁面網址帶有 repo 名稱的子路徑（`https://<owner>.github.io/<repo>/`），若資源路徑是絕對路徑（Vite 預設 `base: '/'`）會全部指向網域根目錄而 404、導致部署後畫面空白；改成相對路徑後，不管部署在子路徑、網域根目錄還是自訂網域都能正確解析，因此不需要因為 Vercel／GitHub Pages 用不同的 `base` 設定分別處理。
+
+因為是純靜態代管，沒有像 Vercel 那樣的伺服器端環境變數設定畫面——Supabase 的兩個環境變數是在 `npm run build` 當下從本機 `.env.local` 讀入並打包進產物的，所以部署前必須確認本機 `.env.local` 內容正確。
+
+## 需求規格文件
+
+[specs/](specs) 目錄記錄各項功能的需求背景、關鍵決策與資料庫 schema，作為比 commit log 更完整的功能開發紀錄。目前有 [specs/auth-leaderboard.md](specs/auth-leaderboard.md)（登入／訪客模式／排行榜功能）。新增重要功能時，比照這份文件的格式（狀態、需求背景、關鍵決策、架構摘要、驗證方式）在此目錄新增一份。
 
 ## 架構說明
 
